@@ -1,8 +1,0 @@
-<video id="video_player" width="640" height="300" muted="" data-setup="{}" preload="auto" src="http://golovin.de/ba/parking.mp4"/>
-
-
-<div class="canvas-container" style="width: 620px; height: 445px; position: absolute; -moz-user-select: none;">
-<canvas height="445" width="620" class="lower-canvas" id="c" style="border: 1px solid rgb(170, 170, 170); position: absolute; width: 620px; height: 445px; left: 0px; top: 0px; -moz-user-select: none;"></canvas>
-<canvas height="445" width="620" style="border: 1px solid rgb(170, 170, 170); position: absolute; width: 620px; height: 445px; left: 0px; top: 0px; -moz-user-select: none; cursor: crosshair;" class="upper-canvas "></canvas>
-
-</div>

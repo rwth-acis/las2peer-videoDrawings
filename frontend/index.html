@@ -44,10 +44,31 @@ OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
   <![endif]-->
 
   <link href="https://netdna.bootstrapcdn.com/bootstrap/3.3.1/css/bootstrap.min.css" rel="stylesheet" id="bootstrap-css">
+  <script src="fabric/dist/fabric.js"></script>
 
 </head>
-<body>
-  
+<style TYPE="text/css"> 
+#video_player {
+    margin-top:80px;
+}
+.panel-body {
+	width:35%;
+	}
+#canvas-div {
+position: fixed;
+    top: 330px;
+    right: 105px;
+	}	
+<script>
+function init() {
+var canvas = document.getElementById("outer-canvas");
+canvas.addEventListener("mousedown", doMouseDown, false);
+}
+function doMouseDown(event){
+console.log("U fut");}
+</script>
+</style>
+ <body> 
   <!-- Fixed navbar -->
   <div class="navbar navbar-default navbar-fixed-top" role="navigation">
     <div class="container">
@@ -83,31 +104,255 @@ OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
   
   <!-- Container for actual page content -->
   <div class="container" style="margin-top:60px">
-	<h2 class="authenticated hidden">Hello, <span id="uname"></span>!</h2>
-	<button onclick="getExample();" class="btn btn-default"><span class="glyphicon glyphicon-hand-right"> Click me!</span></button>
-    <p id="getExampleOutput"></p>
-    <button onclick="postExample('Yeeehaaaa!');" class="btn btn-default"><span class="glyphicon glyphicon-hand-right"> Click me, too!</span></button>
-    <p id="postExampleOutput"></p>
-	<button onclick="postVideo('finally',10,1002);" class="btn btn-default"><span class="glyphicon glyphicon-hand-right"> Post a video :D!</span></button>
-    <p id="postVideoOutput"></p>
-	<button onclick="getTest();" class="btn btn-default"><span class="glyphicon glyphicon-hand-right"> Click me, test!</span></button>
-    <p id="getTestOutput"></p>
-	<button onclick="updateVideo(1,'finally',10,1002);" class="btn btn-default"><span class="glyphicon glyphicon-hand-right"> Update a video :D!</span></button>
-    <p id="updateVideoOutput"></p>
-	<button onclick="deleteVideo(1);" class="btn btn-default"><span class="glyphicon glyphicon-hand-right"> Delete a video :D!</span></button>
-    <p id="deleteVideoOutput"></p>
-	<button onclick="getVideo(2);" class="btn btn-default"><span class="glyphicon glyphicon-hand-right"> Get a video :D!</span></button>
-    <p id="getVideoOutput"></p>
-	<button onclick="getVideos();" class="btn btn-default"><span class="glyphicon glyphicon-hand-right"> Get all videos :D!</span></button>
-    <p id="getVideosOutput"></p>
+  <div class="jumbotron">
+    <h2>Video Drawer service</h2>      
+    <p>This service will grow as we add more and more features...</p>      
   </div>
+  <h2>Annotations and Video</h2>
+  <div class="btn-group btn-group-lg">
+    <button type="button" onclick="getPreviousAnnotation()" class="btn btn-primary"><span class="glyphicon glyphicon-step-backward" aria-hidden="true"></span> Previous</button>
+    <button type="button" onclick="playVid()" class="btn btn-primary">Play <span class="glyphicon glyphicon-play" aria-hidden="true"></span></button>
+    <button type="button" onclick="pauseVid()" class="btn btn-primary">Pause <span class="glyphicon glyphicon-pause" aria-hidden="true"></span></button>
+	<button type="button" onclick="getNextAnnotation()"class="btn btn-primary">Next <span class="glyphicon glyphicon-step-forward" aria-hidden="true"></span></button>
+  </div>
+  <h2>Annotations</h2>
+  <div class="btn-group btn-group-lg">
+    <button type="button" id="drawing-mode" class="btn btn-primary">Cancel drawing mode</button>
+    <button type="button" onclick="sendDrawing()" id="sendDrawing" class="btn btn-primary">Save <span class=" glyphicon glyphicon-save" aria-hidden="true"/></button>
+	<button type="button" onclick = "deleteVideo(id)" id="drawing-mode" class="btn btn-primary">Delete <span class=" glyphicon glyphicon-remove" aria-hidden="true"/> </button>
+    <button type="button" id="clear-canvas" class="btn btn-primary">Clear Canvas</button>
+	<!--<button type="button" onclick="sendDrawing()" id="getDrawing" class="btn btn-primary">Get Drawing</button>-->
+  </div>
+	
+	<h2>List of Annotations</h2>
+	<div class="panel-body">
+		<ul class="list-group">
+			<div id = "annotation-list">	
+			<li class="list-group-item">
+			Annotation
+				<div style="float:right;">
+					<button type="button" class="btn btn-default">
+						<span class="glyphicon glyphicon-pencil"></span>
+					</button>
+					<button type="button" class="btn btn-default">
+						<span class="glyphicon glyphicon-trash"></span>
+					</button>
+				</div>
+			</li>
+			</div>
+		</ul>
+	</div>				
+	<h2 class="authenticated hidden">Hello, <span id="uname"></span>!</h2>
+	<!--<button onclick="playVid()" class="btn btn-info" type="button">Play Video</button>
+	<button onclick="pauseVid()"  class="btn btn-info" type="button">Pause Video</button>
+	<button id="drawing-mode" class="btn btn-info">Cancel drawing mode</button>
+	<button id="clear-canvas" class="btn btn-info">Clear</button>
+	<button id="sendDrawing" class="btn btn-info">Send Draiwing</button>
+	<button id="getDrawing" class="btn btn-info">Get Draiwing</button>-->
+	<div id= "canvas-div" >
+	<div style="width: 620px; height: 445px; position: absolute; -moz-user-select: none;" class="canvas-container">
+		<canvas id="outer-canvas" height="445" width="620" style="border: 1px solid rgb(170, 170, 170); position: absolute; width: 620px; height: 445px; left: 0px; top: 0px; -moz-user-select: none; cursor: crosshair;" class="upper-canvas"></canvas>
+
+	</div>
+	<video id="video_player" muted="" width="640" height="300" preload="auto" src="http://golovin.de/ba/parking.mp4"  ></video>
+	</div>
+  </div>
+  <!-- Operations with the canvas-->
+  <script id="main">
+	var index = 0;
+	var id;
+	var vid = document.getElementById('video_player');
+	var $ = function(id){return document.getElementById(id)};
+	var canvas = this.__canvas = new fabric.Canvas('outer-canvas', {
+    isDrawingMode: true
+	});
+	var drawingModeEl = $('drawing-mode'),
+		clearEl = $('clear-canvas'),
+		sendDrawingEl = $('sendDrawing'),
+		getDrawingEl = $('getDrawing');
+
+	function playVid() { 
+		vid.play();
+		
+	} 
+
+	function pauseVid() { 
+		vid.pause(); 
+	}
+	
+	function getCurTime() { 
+		return vid.currentTime;
+	}
+	
+	function setCurTime(time) {
+		vid.currentTime = time;
+	}
+		
+	clearEl.onclick = function() { canvas.clear() };
+	
+	
+	sendDrawingEl.onclick = function() {
+		sendDrawing();
+    };
+	
+	getDrawingEl.onclick = function() {
+		getDrawing();
+		console.log(index);
+	};
+	
+	function sendDrawing(){
+		var source = vid.getAttributeNode("src").value;
+		console.log(JSON.stringify(canvas));
+		console.log(getCurTime());
+		console.log(source);
+		postVideo(JSON.stringify(canvas), getCurTime(), 10, source);
+	}
+	  
+	function getDrawing(){
+		var source = vid.getAttributeNode("src").value;
+		console.log("getting drawings");
+		getVideo(source);
+	 }
+  
+	function showDrawing(jsonArray){
+		var i;
+		console.log("showDrawing");
+		console.log(jsonArray.length);
+		var annotationsHtml="";
+		for(i = 0; i < jsonArray.length; i++) {
+			var begin = "<li class='list-group-item'>";
+			var buttons = "<div style='float:right;'><button type='button' class='btn btn-default'>	<span class='glyphicon glyphicon-pencil'></span></button><button type='button' class='btn btn-default'><span class='glyphicon glyphicon-trash'></span></button></div>";
+			var annotation = begin.concat(i," time:",jsonArray[i].time," duration",jsonArray[i].duration, buttons, "</li>"); 
+			console.log(i);
+			console.log(jsonArray[i].duration);
+			console.log(jsonArray[i].time);
+			console.log(jsonArray[i].videoUrl);
+			annotationsHtml.concat(annotation);
+		}
+		document.getElementById("annotation-list").innerHTML = annotationsHtml;
+		id = jsonArray[index].drawingId;
+		vid.currentTime = jsonArray[index].time;
+		console.log(jsonArray[index].time);
+		canvas.loadFromJSON(jsonArray[index].drawing, canvas.renderAll.bind(canvas), function(o, object) {
+		fabric.log(o, object);
+		});
+	}
+ 
+	function log(message) {
+		console.log("pause video");
+		if (message === 'mouse:down') {
+			console.log(message); 
+			vid.pause(); 
+		} else {
+			console.log(message); 
+			vid.pause(); 
+		}
+	}
+
+	function observe(eventName) {
+		log(eventName);
+		//canvas.on(eventName, function(){ log(eventName) });
+	}
+	
+	drawingModeEl.onclick = function() {
+		canvas.isDrawingMode = !canvas.isDrawingMode;
+		if (canvas.isDrawingMode) {
+		  drawingModeEl.innerHTML = 'Cancel drawing mode';
+		  drawingOptionsEl.style.display = '';
+		}
+		else {
+		  drawingModeEl.innerHTML = 'Enter drawing mode';
+		  drawingOptionsEl.style.display = 'none';
+		}
+	};
+
+
+	drawingColorEl.onchange = function() {
+		canvas.freeDrawingBrush.color = this.value;
+	};
+	drawingShadowColorEl.onchange = function() {
+		canvas.freeDrawingBrush.shadowColor = this.value;
+	};
+	drawingLineWidthEl.onchange = function() {
+		canvas.freeDrawingBrush.width = parseInt(this.value, 10) || 1;
+		this.previousSibling.innerHTML = this.value;
+	};
+	drawingShadowWidth.onchange = function() {
+		canvas.freeDrawingBrush.shadowBlur = parseInt(this.value, 10) || 0;
+		this.previousSibling.innerHTML = this.value;
+	};
+	drawingShadowOffset.onchange = function() {
+		canvas.freeDrawingBrush.shadowOffsetX =
+		canvas.freeDrawingBrush.shadowOffsetY = parseInt(this.value, 10) || 0;
+		this.previousSibling.innerHTML = this.value;
+	};
+	
+	var circle = new fabric.Circle({
+  radius: 20, fill: 'black', left: 100, top: 100,
+});
+
+function getPreviousAnnotation()
+{
+	if (index <= 0)
+		alert ("There is no previous annotation");
+	else {
+	index = index -1;
+	getDrawing(index);
+	console.log("on Previous");
+	}
+}
+
+function getNextAnnotation()
+{
+	if (index < 0)
+		alert ("There is no next annotation");
+	else {
+	index = index + 1;
+	getDrawing(index);
+	console.log("on Next");
+	}
+}
+
+
+canvas.renderAll();
+
+	//observe('mouse:up');
+	//observe('mouse:down');
+	//observe('after:render');
+
+</script>
+<body >
+<script>
+(function() {
+
+  if (document.location.hostname === 'localhost') {
+    var links = document.getElementById('header').getElementsByTagName('a');
+    for (var i = 0, len = links.length; i < len; i++) {
+      // very retarted fix but fuck it
+      links[i].href = links[i].href.replace('fabricjs.com', 'localhost:4000');
+    }
+  }
+  else {
+    var s = document.createElement('script'), t = document.getElementsByTagName('script')[0];
+    s.async = true;
+    s.src = 'http://api.flattr.com/js/0.6/load.js?mode=auto';
+    t.parentNode.insertBefore(s, t);
+
+    !function(d,s,id){var js,fjs=d.getElementsByTagName(s)[0];if(!d.getElementById(id)){js=d.createElement(s);js.id=id;js.src="//platform.twitter.com/widgets.js";fjs.parentNode.insertBefore(js,fjs);}}(document,"script","twitter-wjs");
+  }
+})();
+</script>
+
   
   <!-- import jQuery for AJAX calls (must) -->
 	<script type="text/javascript" src="https://code.jquery.com/jquery-1.11.1.min.js"></script>
+	<script> 
+	 
+		
+	</script> 
 	
   <!-- import Bootstrap for responsive UI (must) -->
   <script type="text/javascript" src="https://netdna.bootstrapcdn.com/bootstrap/3.3.1/js/bootstrap.min.js"></script>
-  
   <!-- import JWS and JSRSASIGN (must) -->
   <script type="text/javascript" src="js/jws-2.0.min.js"></script>
   <script type="text/javascript" src="js/jsrsasign/ext/base64-min.js"></script>
@@ -192,12 +437,21 @@ OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
       );
     }
 	
-	  function getVideo(input) {
-      client.getVideo(input,
+	  function getVideo(videoUrl, j) {
+	  var values = {"videoUrl":videoUrl};
+	  var input = JSON.stringify(values);
+	  client.getVideo(input,
         function(data,type) {
           // this is the success callback
-          console.log(data);
-          $("#getVideoOutput").html(data);
+			var arr = JSON.parse(data);
+			var i;
+			for(i = 0; i < arr.length; i++) {
+				console.log(i);
+				console.log(arr[i].time);
+				}
+			console.log("going at show drawing");
+			showDrawing(arr,j);
+          //$("#getVideoOutput").html(data);
         },
         function(error) {
           // this is the error callback
@@ -205,6 +459,8 @@ OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
           $("#getVideoOutput").html(error);
         }
       );
+	 $("#getVideoOutput").html(result);
+	  
     }
 	
 	function getVideos() {
@@ -238,10 +494,10 @@ OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
       );
     }
 	
-	function postVideo(json,time,duration) {
-	var slash ='/'
-	var input = json.concat(slash,time,slash,duration);
-      client.postVideo(input,
+	function postVideo(json,time,duration,videoUrl) {
+	var values = {"drawing":json, "time":time, "duration":duration, "videoUrl":videoUrl};
+	var input = JSON.stringify(values);
+	client.postVideo(input,
         function(data,type) {
           // this is the success callback
           console.log(data);
@@ -255,10 +511,9 @@ OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
       );
     }
 	
-	function updateVideo(id,json,time,duration) {
-	var slash ='/';
-	var s= id.toString();
-	var input = s.concat(slash,json,slash,time,slash,duration);
+	function updateVideo(id,json,time,duration,videoUrl) {
+	var values = {"drawingId":id,"drawing":json, "time":time, "duration":duration, "videoUrl":videoUrl};
+	var input = JSON.stringify(values);
       client.updateVideo(input,
         function(data,type) {
           // this is the success callback
@@ -274,7 +529,7 @@ OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
     }
 	
 	function deleteVideo(input) {
-      client.updateVideo(input,
+      client.updateVideo(id,
         function(data,type) {
           // this is the success callback
           console.log(data);

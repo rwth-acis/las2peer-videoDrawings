@@ -68,7 +68,7 @@ TemplateServiceClient.prototype.getTests = function(successCallback, errorCallba
 
 TemplateServiceClient.prototype.getVideo = function(input,successCallback, errorCallback) {
 	this.sendRequest("GET",
-		"video-drawing/drawings/"+encodeURIComponent(input),
+		"video-drawing/drawings/"+input,
 		"",
 		"application/json",
 		{},
@@ -128,14 +128,14 @@ TemplateServiceClient.prototype.updateVideo = function(input,values, successCall
 };
 
 TemplateServiceClient.prototype.deleteVideo = function(input, successCallback, errorCallback) {
-this.sendRequest("DELETE",
-"video-drawing/drawings/" + input,
-"",
-"application/json",
-{},
-successCallback,
-errorCallback
-);
+	this.sendRequest("POST",
+		"video-drawing/drawings/"+input,
+		"",
+		"application/json",
+		{},
+		successCallback,
+		errorCallback
+	);
 };
 /**
 * sends an AJAX request to a resource.

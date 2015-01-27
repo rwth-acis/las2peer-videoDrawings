@@ -155,12 +155,14 @@ public class ServiceTest {
 		c.setAddressPort(HTTP_ADDRESS, HTTP_PORT);
 		
 		try
+		//removed the default test cases since these methods are not in the service anymore
+		// will write own test cases. TODO: write test cases.
 		{
-			c.setLogin(Long.toString(testAgent.getId()), testPass);
-            ClientResponse result=c.sendRequest("POST", mainPath +"myResourcePath/testInput", ""); //testInput is the pathParam
-            assertEquals(200, result.getHttpCode());
-            assertTrue(result.getResponse().trim().contains("testInput")); //"testInput" name is part of response
-			System.out.println("Result of 'testExampleMethod': " + result.getResponse().trim());
+//			c.setLogin(Long.toString(testAgent.getId()), testPass);
+//            ClientResponse result=c.sendRequest("POST", mainPath +"myResourcePath/testInput", ""); //testInput is the pathParam
+//            assertEquals(200, result.getHttpCode());
+//            assertTrue(result.getResponse().trim().contains("testInput")); //"testInput" name is part of response
+//			System.out.println("Result of 'testExampleMethod': " + result.getResponse().trim());
 		}
 		catch(Exception e)
 		{

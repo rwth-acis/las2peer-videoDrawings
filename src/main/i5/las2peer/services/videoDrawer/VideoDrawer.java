@@ -2,6 +2,7 @@ package i5.las2peer.services.videoDrawer;
 
 import i5.las2peer.api.Service;
 import i5.las2peer.restMapper.HttpResponse;
+import i5.las2peer.restMapper.MediaType;
 import i5.las2peer.restMapper.RESTMapper;
 import i5.las2peer.restMapper.annotations.ContentParam;
 import i5.las2peer.restMapper.annotations.DELETE;
@@ -11,8 +12,15 @@ import i5.las2peer.restMapper.annotations.HttpHeaders;
 import i5.las2peer.restMapper.annotations.POST;
 import i5.las2peer.restMapper.annotations.Path;
 import i5.las2peer.restMapper.annotations.PathParam;
+import i5.las2peer.restMapper.annotations.Produces;
 import i5.las2peer.restMapper.annotations.QueryParam;
 import i5.las2peer.restMapper.annotations.Version;
+import i5.las2peer.restMapper.annotations.swagger.ApiInfo;
+import i5.las2peer.restMapper.annotations.swagger.ApiResponses;
+import i5.las2peer.restMapper.annotations.swagger.ApiResponse;
+import i5.las2peer.restMapper.annotations.swagger.Notes;
+import i5.las2peer.restMapper.annotations.swagger.ResourceListApi;
+import i5.las2peer.restMapper.annotations.swagger.Summary;
 import i5.las2peer.restMapper.tools.ValidationResult;
 import i5.las2peer.restMapper.tools.XMLCheck;
 import i5.las2peer.security.Context;
@@ -30,15 +38,6 @@ import net.minidev.json.JSONObject;
 import net.minidev.json.JSONValue;
 import net.minidev.json.parser.ParseException;
 
-
-
-
-
-
-
-
-
-
 import com.mysql.jdbc.ResultSetMetaData;
 
 import net.minidev.json.JSONArray;
@@ -47,12 +46,20 @@ import net.minidev.json.JSONObject;
 /**
  * LAS2peer Service
  * 
- * This is a template for a very basic LAS2peer service
- * that uses the LAS2peer Web-Connector for RESTful access to it.
+ * This is a video drawing service. This service will post/get/delete drawings from the user frontend to
+ * the database. 
  * 
  */
 @Path("video-drawing")
 @Version("0.1")
+@ApiInfo(
+	title="Video drawing service",
+	description="<p>A RESTful service for saving free drawing annotations of the videos.</p>",
+	termsOfServiceUrl="",
+	contact="bbakiu@dbis.rwth-aachen.de",
+	license="",
+	licenseUrl=""
+)
 public class VideoDrawer extends Service {
 
 	private String jdbcDriverClassName;
@@ -61,11 +68,18 @@ public class VideoDrawer extends Service {
 	private String jdbcUrl;
 	private String jdbcSchema;
 	private DatabaseManager dbm;
-
+	
+	private String epUrl;
+	
 	public VideoDrawer() {
 		// read and set properties values
 		// IF THE SERVICE CLASS NAME IS CHANGED, THE PROPERTIES FILE NAME NEED TO BE CHANGED TOO!
 		setFieldValues();
+		
+		
+		 if(!epUrl.endsWith("/")){
+			 epUrl += "/";
+			 }
 		// instantiate a database manager to handle database connection pooling and credentials
 		dbm = new DatabaseManager(jdbcDriverClassName, jdbcLogin, jdbcPass, jdbcUrl, jdbcSchema);
 	}
@@ -78,7 +92,14 @@ public class VideoDrawer extends Service {
 	 * 
 	 */
 	@GET
+	@Produces(MediaType.TEXT_HTML)
 	@Path("validation")
+	@ResourceListApi(description = "Check the user")
+	@Summary("Return a greeting for the logged in user")
+	@Notes("This is an example method")
+	@ApiResponses(value={
+	@ApiResponse(code = 200, message = "The user is logged in"),
+	})
 	public HttpResponse validateLogin() 
 				{
 		String returnString = "";
@@ -90,11 +111,21 @@ public class VideoDrawer extends Service {
 	
 	
 	/*
-	 * posts a video into database
+	 * Posts a drawing in the database. The String data is a JSON string which contains
+	 * the drawing JSON from FabricJS, the time of the video when this drawing is created, 
+	 * the duration for this annotation and the url of the video.
 	 */
 	@POST
 	@Path("drawings")
-	public HttpResponse postVideo(@ContentParam String data)
+	@Summary("Insert new annotation")
+	@Notes("Requires authentication.")
+	@ApiResponses(value={
+	@ApiResponse(code = 200, message = "Video annotation saved successfully."),
+	@ApiResponse(code = 401, message = "User is not authenticated."),
+	@ApiResponse(code = 409, message = "Annotations already exists."),
+	@ApiResponse(code = 500, message = "Internal error.")
+	})
+	public HttpResponse postDrawing(@ContentParam String data)
 	{
 
 		String result = "";
@@ -112,24 +143,31 @@ public class VideoDrawer extends Service {
 			for (Object key: o.keySet()){
 				result+= key + " " + o.get(key);
 			}
-			
-			// get connection from connection pool
-			conn = dbm.getConnection();
-			
-			// prepare statement
-			stmnt = conn.prepareStatement("INSERT INTO drawings( drawing, time, duration, videoUrl) VALUES (?,?,?,?);");
-			stmnt.setString( 1, (String) o.get("drawing") );
-			stmnt.setDouble( 2, (double) o.get("time"));
-		    stmnt.setInt( 3, (int) o.get("duration"));
-		    stmnt.setString( 4, (String) o.get("videoUrl") );
-			
-		    int rows = stmnt.executeUpdate(); // same works for insert
-			result = "Database insert. " + rows + " rows affected";
-			
-			// return 
+		if(getActiveAgent().getId() != getActiveNode().getAnonymous().getId()){
+				// get connection from connection pool
+				conn = dbm.getConnection();
+				
+				// prepare statement
+				stmnt = conn.prepareStatement("INSERT INTO drawings( drawing, time, duration, videoUrl) VALUES (?,?,?,?);");
+				stmnt.setString( 1, (String) o.get("drawing") );
+				stmnt.setDouble( 2, (double) o.get("time"));
+			    stmnt.setInt( 3, (int) o.get("duration"));
+			    stmnt.setString( 4, (String) o.get("videoUrl") );
+				
+			    int rows = stmnt.executeUpdate(); // same works for insert
+				result = "Database insert. " + rows + " rows affected";
+				
+				// return 
+				HttpResponse r = new HttpResponse(result);
+				r.setStatus(200);
+				return r;
+		} else {
+			result = "User in not authenticated";
+			// return
 			HttpResponse r = new HttpResponse(result);
-			r.setStatus(200);
+			r.setStatus(401);
 			return r;
+		}
 			
 		} catch (Exception e) {
 			// return HTTP Response on error
@@ -178,11 +216,24 @@ public class VideoDrawer extends Service {
 		
 	}
 	
-	
+	/**
+	 * Updates a drawing in the database. 
+	 * @param drawingIdPost The Id of the drawing that will be updated.
+	 * @param data The JSON with the updated data.
+	 * @return a successful or failed update.
+	 */
 	
 	@POST
 	@Path("drawings/{drawingId}")
-	public HttpResponse updateVideo(@PathParam("drawingId") int drawingIdPost,@ContentParam String data) {
+	@Summary("Update an annotation")
+	@Notes("Requires authentication.")
+	@ApiResponses(value={
+	@ApiResponse(code = 200, message = "Video annotation updated successfully."),
+	@ApiResponse(code = 401, message = "User is not authenticated."),
+	@ApiResponse(code = 404, message = "Annotation not found"),
+	@ApiResponse(code = 500, message = "Internal error.")
+	})
+	public HttpResponse updateDrawing(@PathParam("drawingId") int drawingIdPost,@ContentParam String data) {
 		
 		String result = "";
 		Connection conn = null;
@@ -196,25 +247,34 @@ public class VideoDrawer extends Service {
 			} catch (ParseException e1) {
 				throw new IllegalArgumentException("data is not valid JSON!");
 			}
-			conn = dbm.getConnection();
-									
-			for (Object key: o.keySet()){
-				
-				if(updateStr.equals("")){
-					updateStr+= key + "  =  '" + o.get(key) +  "' ";
-				}else{
-					updateStr+= ", " + key + "  =  '" + o.get(key)  +  "' ";
+			if(getActiveAgent().getId() != getActiveNode().getAnonymous().getId()){
+				conn = dbm.getConnection();
+										
+				for (Object key: o.keySet()){
+					
+					if(updateStr.equals("")){
+						updateStr+= key + "  =  '" + o.get(key) +  "' ";
+					}else{
+						updateStr+= ", " + key + "  =  '" + o.get(key)  +  "' ";
+					}
 				}
+				conn = dbm.getConnection();
+				stmnt = conn.prepareStatement("UPDATE drawings SET " + updateStr + "  WHERE drawingId = " + drawingIdPost + ";");
+				int rows = stmnt.executeUpdate(); // same works for insert
+				result = "Database updated. " + rows + " rows affected";
+				
+				// return 
+				HttpResponse r = new HttpResponse(result);
+				r.setStatus(200);
+				return r;
+			} else {
+				result = "User in not authenticated";
+				// return
+				HttpResponse r = new HttpResponse(result);
+				r.setStatus(401);
+				return r;
 			}
-			conn = dbm.getConnection();
-			stmnt = conn.prepareStatement("UPDATE drawings SET " + updateStr + "  WHERE drawingId = " + drawingIdPost + ";");
-			int rows = stmnt.executeUpdate(); // same works for insert
-			result = "Database updated. " + rows + " rows affected";
 			
-			// return 
-			HttpResponse r = new HttpResponse(result);
-			r.setStatus(200);
-			return r;
 			
 		} catch (Exception e) {
 			// return HTTP Response on error
@@ -263,9 +323,23 @@ public class VideoDrawer extends Service {
 		
 	}
 	
+	/**
+	 * Gets all the annotations (drawings) for a video.	
+	 * @param videoUrlJson the URL of the video, but it is encoded in a JSON string. This is done to avoid requests that
+	 * have as a extension something like /http://www.google.com/video?id=100
+	 * @return
+	 */
 	@GET
 	@Path("drawings/{videoUrl}")
-	public HttpResponse getVideo(@PathParam("videoUrl") String videoUrlJson) {
+	@ResourceListApi(description = "Return annotations for a selected video")
+	@Summary("return a JSON with video annotations stored for the given VideoUrl")
+	@Notes("Return all annotations in JSON with Id, time and duration")
+	@ApiResponses(value={
+	@ApiResponse(code = 200, message = "Video annotations"),
+	@ApiResponse(code = 404, message = "Video url does not exist"),
+	@ApiResponse(code = 500, message = "Internal error"),
+	})
+	public HttpResponse getVideoDrawings(@PathParam("videoUrl") String videoUrlJson) {
 		String result = "";
 		Connection conn = null;
 		PreparedStatement stmnt = null;
@@ -376,10 +450,21 @@ public class VideoDrawer extends Service {
 		}
 	
 	}
-
+	/**
+	 * Gets all annotations in the database
+	 * @return
+	 */
 	@GET
 	@Path("drawings")
-	public HttpResponse getAllVideo() {
+	@ResourceListApi(description = "Return annotations for all videos")
+	@Summary("return a JSON with video annotations stored for all videos")
+	@Notes("Notes")
+	@ApiResponses(value={
+	@ApiResponse(code = 200, message = "Video annotation"),
+	@ApiResponse(code = 404, message = "Nothing exists"),
+	@ApiResponse(code = 500, message = "Internal error"),
+	})
+	public HttpResponse getAllDrawings() {
 		String result = "";
 		Connection conn = null;
 		PreparedStatement stmnt = null;
@@ -482,25 +567,47 @@ public class VideoDrawer extends Service {
 		}
 	
 	}
+	
+	/**
+	 * Deletes one annotation from the database.
+	 * @param drawingIdPost the id of the annotation to be deleted.
+	 * @return
+	 */
 	@DELETE
 	@Path("drawings/{drawingId}")
-	public HttpResponse deleteVideo(@PathParam("drawingId") int drawingIdPost) {
+	@Summary("Delete video annotation")
+	@Notes("Requires authentication.")
+	@ApiResponses(value={
+	@ApiResponse(code = 200, message = "Video annotation deleted successfully."),
+	@ApiResponse(code = 401, message = "User is not authenticated."),
+	@ApiResponse(code = 404, message = "Video annotation not found."),
+	@ApiResponse(code = 500, message = "Internal error.")
+	})
+	public HttpResponse deleteDrawing(@PathParam("drawingId") int drawingIdPost) {
 		
 		String result = "";
 		Connection conn = null;
 		PreparedStatement stmnt = null;
 		ResultSet rs = null;
 		try {
-			conn = dbm.getConnection();
-			stmnt = conn.prepareStatement("DELETE FROM drawings WHERE drawingId = ?;");
-			stmnt.setInt(1, drawingIdPost);
-			int rows = stmnt.executeUpdate(); // same works for insert
-			result = "Database delete. " + rows + " rows affected";
-			
-			// return 
-			HttpResponse r = new HttpResponse(result);
-			r.setStatus(200);
-			return r;
+			if(getActiveAgent().getId() != getActiveNode().getAnonymous().getId()){
+				conn = dbm.getConnection();
+				stmnt = conn.prepareStatement("DELETE FROM drawings WHERE drawingId = ?;");
+				stmnt.setInt(1, drawingIdPost);
+				int rows = stmnt.executeUpdate(); // same works for insert
+				result = "Database delete. " + rows + " rows affected";
+				
+				// return 
+				HttpResponse r = new HttpResponse(result);
+				r.setStatus(200);
+				return r;
+			} else {
+				result = "User in not authenticated";
+				// return
+				HttpResponse r = new HttpResponse(result);
+				r.setStatus(401);
+				return r;
+			}
 			
 		} catch (Exception e) {
 			// return HTTP Response on error
@@ -550,188 +657,29 @@ public class VideoDrawer extends Service {
 	}
 	
 
-	/**
-	 * Another example method.
-	 * 
-	 * @param myInput
-	 * 
-	 */
-	@POST
-	@Path("myResourcePath/{input}")
-	public HttpResponse exampleMethod(@PathParam("input") String myInput) {
-		String returnString = "";
-		returnString += "You have entered " + myInput + "!";
-		HttpResponse res = new HttpResponse(returnString);
-		res.setStatus(200);
-		return res;
-		
-	}
 
-	/**
-	 * Example method that shows how to retrieve a user email address from a database 
-	 * and return an HTTP response including a JSON object.
-	 * 
-	 * WARNING: THIS METHOD IS ONLY FOR DEMONSTRATIONAL PURPOSES!!! 
-	 * IT WILL REQUIRE RESPECTIVE DATABASE TABLES IN THE BACKEND, WHICH DON'T EXIST IN THE TEMPLATE.
-	 * 
-	 */
+	// ================= Swagger Resource Listing & API Declarations =====================
 	@GET
-	@Path("userEmail/{username}")
-	public HttpResponse getUserEmail(@PathParam("username") String username) {
-		String result = "";
-		Connection conn = null;
-		PreparedStatement stmnt = null;
-		ResultSet rs = null;
-		try {
-			// get connection from connection pool
-			conn = dbm.getConnection();
-			
-			// prepare statement
-			stmnt = conn.prepareStatement("SELECT email FROM users WHERE username = ?;");
-			stmnt.setString(1, username);
-			
-			// retrieve result set
-			rs = stmnt.executeQuery();
-			
-			// process result set
-			if (rs.next()) {
-				result = rs.getString(1);
-				
-				// setup resulting JSON Object
-				JSONObject ro = new JSONObject();
-				ro.put("email", result);
-				
-				// return HTTP Response on success
-				HttpResponse r = new HttpResponse(ro.toJSONString());
-				r.setStatus(200);
-				return r;
-				
-			} else {
-				result = "No result for username " + username;
-				
-				// return HTTP Response on error
-				HttpResponse er = new HttpResponse(result);
-				er.setStatus(404);
-				return er;
-			}
-		} catch (Exception e) {
-			// return HTTP Response on error
-			HttpResponse er = new HttpResponse("Internal error: " + e.getMessage());
-			er.setStatus(500);
-			return er;
-		} finally {
-			// free resources
-			if (rs != null) {
-				try {
-					rs.close();
-				} catch (Exception e) {
-					Context.logError(this, e.getMessage());
-					
-					// return HTTP Response on error
-					HttpResponse er = new HttpResponse("Internal error: " + e.getMessage());
-					er.setStatus(500);
-					return er;
-				}
-			}
-			if (stmnt != null) {
-				try {
-					stmnt.close();
-				} catch (Exception e) {
-					Context.logError(this, e.getMessage());
-					
-					// return HTTP Response on error
-					HttpResponse er = new HttpResponse("Internal error: " + e.getMessage());
-					er.setStatus(500);
-					return er;
-				}
-			}
-			if (conn != null) {
-				try {
-					conn.close();
-				} catch (Exception e) {
-					Context.logError(this, e.getMessage());
-					
-					// return HTTP Response on error
-					HttpResponse er = new HttpResponse("Internal error: " + e.getMessage());
-					er.setStatus(500);
-					return er;
-				}
-			}
-		}
+	@Path("api-docs")
+	@Summary("retrieve Swagger 1.2 resource listing.")
+	@ApiResponses(value={
+	@ApiResponse(code = 200, message = "Swagger 1.2 compliant resource listing"),
+	@ApiResponse(code = 404, message = "Swagger resource listing not available due to missing annotations."),
+	})
+	@Produces(MediaType.APPLICATION_JSON)
+	public HttpResponse getSwaggerResourceListing(){
+	return RESTMapper.getSwaggerResourceListing(this.getClass());
 	}
-
-	/**
-	 * Example method that shows how to change a user email address in a database.
-	 * 
-	 * WARNING: THIS METHOD IS ONLY FOR DEMONSTRATIONAL PURPOSES!!! 
-	 * IT WILL REQUIRE RESPECTIVE DATABASE TABLES IN THE BACKEND, WHICH DON'T EXIST IN THE TEMPLATE.
-	 * 
-	 */
-	@POST
-	@Path("userEmail/{username}/{email}")
-	public HttpResponse setUserEmail(@PathParam("username") String username, @PathParam("email") String email) {
-		
-		String result = "";
-		Connection conn = null;
-		PreparedStatement stmnt = null;
-		ResultSet rs = null;
-		try {
-			conn = dbm.getConnection();
-			stmnt = conn.prepareStatement("UPDATE users SET email = ? WHERE username = ?;");
-			stmnt.setString(1, email);
-			stmnt.setString(2, username);
-			int rows = stmnt.executeUpdate(); // same works for insert
-			result = "Database updated. " + rows + " rows affected";
-			
-			// return 
-			HttpResponse r = new HttpResponse(result);
-			r.setStatus(200);
-			return r;
-			
-		} catch (Exception e) {
-			// return HTTP Response on error
-			HttpResponse er = new HttpResponse("Internal error: " + e.getMessage());
-			er.setStatus(500);
-			return er;
-		} finally {
-			// free resources if exception or not
-			if (rs != null) {
-				try {
-					rs.close();
-				} catch (Exception e) {
-					Context.logError(this, e.getMessage());
-					
-					// return HTTP Response on error
-					HttpResponse er = new HttpResponse("Internal error: " + e.getMessage());
-					er.setStatus(500);
-					return er;
-				}
-			}
-			if (stmnt != null) {
-				try {
-					stmnt.close();
-				} catch (Exception e) {
-					Context.logError(this, e.getMessage());
-					
-					// return HTTP Response on error
-					HttpResponse er = new HttpResponse("Internal error: " + e.getMessage());
-					er.setStatus(500);
-					return er;
-				}
-			}
-			if (conn != null) {
-				try {
-					conn.close();
-				} catch (Exception e) {
-					Context.logError(this, e.getMessage());
-					
-					// return HTTP Response on error
-					HttpResponse er = new HttpResponse("Internal error: " + e.getMessage());
-					er.setStatus(500);
-					return er;
-				}
-			}
-		}
+	@GET
+	@Path("api-docs/{tlr}")
+	@Produces(MediaType.APPLICATION_JSON)
+	@Summary("retrieve Swagger 1.2 API declaration for given top-level resource.")
+	@ApiResponses(value={
+	@ApiResponse(code = 200, message = "Swagger 1.2 compliant API declaration"),
+	@ApiResponse(code = 404, message = "Swagger API declaration not available due to missing annotations."),
+	})
+	public HttpResponse getSwaggerApiDeclaration(@PathParam("tlr") String tlr){
+	return RESTMapper.getSwaggerApiDeclaration(this.getClass(),tlr, epUrl);
 	}
 
 	/**

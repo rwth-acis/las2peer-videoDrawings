@@ -44,9 +44,36 @@ OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
   <![endif]-->
 
   <link href="https://netdna.bootstrapcdn.com/bootstrap/3.3.1/css/bootstrap.min.css" rel="stylesheet" id="bootstrap-css">
+  <script src="fabric/dist/fabric.js"></script>
 
 </head>
+<style TYPE="text/css"> 
+#video_player {
+    margin-top:80px;
+}
+</style>
+
 <body>
+<script>
+(function() {
+
+  if (document.location.hostname === 'localhost') {
+    var links = document.getElementById('header').getElementsByTagName('a');
+    for (var i = 0, len = links.length; i < len; i++) {
+      // very retarted fix but fuck it
+      links[i].href = links[i].href.replace('fabricjs.com', 'localhost:4000');
+    }
+  }
+  else {
+    var s = document.createElement('script'), t = document.getElementsByTagName('script')[0];
+    s.async = true;
+    s.src = 'http://api.flattr.com/js/0.6/load.js?mode=auto';
+    t.parentNode.insertBefore(s, t);
+
+    !function(d,s,id){var js,fjs=d.getElementsByTagName(s)[0];if(!d.getElementById(id)){js=d.createElement(s);js.id=id;js.src="//platform.twitter.com/widgets.js";fjs.parentNode.insertBefore(js,fjs);}}(document,"script","twitter-wjs");
+  }
+})();
+</script>
   
   <!-- Fixed navbar -->
   <div class="navbar navbar-default navbar-fixed-top" role="navigation">
@@ -86,27 +113,207 @@ OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 	<h2 class="authenticated hidden">Hello, <span id="uname"></span>!</h2>
 	<button onclick="getExample();" class="btn btn-default"><span class="glyphicon glyphicon-hand-right"> Click me!</span></button>
     <p id="getExampleOutput"></p>
+	<button onclick="JSONString();" class="btn btn-default"><span class="glyphicon glyphicon-hand-right"> To JSON</span></button>
+    <p id="getExampleOutput"></p>
     <button onclick="postExample('Yeeehaaaa!');" class="btn btn-default"><span class="glyphicon glyphicon-hand-right"> Click me, too!</span></button>
     <p id="postExampleOutput"></p>
 	<button onclick="postVideo('finally',10,1002);" class="btn btn-default"><span class="glyphicon glyphicon-hand-right"> Post a video :D!</span></button>
     <p id="postVideoOutput"></p>
 	<button onclick="getTest();" class="btn btn-default"><span class="glyphicon glyphicon-hand-right"> Click me, test!</span></button>
     <p id="getTestOutput"></p>
-	<button onclick="updateVideo(1,'finally',10,1002);" class="btn btn-default"><span class="glyphicon glyphicon-hand-right"> Update a video :D!</span></button>
-    <p id="updateVideoOutput"></p>
-	<button onclick="deleteVideo(1);" class="btn btn-default"><span class="glyphicon glyphicon-hand-right"> Delete a video :D!</span></button>
-    <p id="deleteVideoOutput"></p>
-	<button onclick="getVideo(2);" class="btn btn-default"><span class="glyphicon glyphicon-hand-right"> Get a video :D!</span></button>
-    <p id="getVideoOutput"></p>
-	<button onclick="getVideos();" class="btn btn-default"><span class="glyphicon glyphicon-hand-right"> Get all videos :D!</span></button>
-    <p id="getVideosOutput"></p>
+	<div id="buttons">
+		<button onclick="playVid()" class="btn btn-info" type="button">Play Video</button>
+		<button onclick="pauseVid()"  class="btn btn-info" type="button">Pause Video</button>
+		<button id="drawing-mode" class="btn btn-info">Cancel drawing mode</button>
+		<button id="clear-canvas" class="btn btn-info">Clear</button>
+		<button id="toJson" class="btn btn-info">toJSON</button>
+	</div>
+	<div style="width: 620px; height: 445px; position: absolute; -moz-user-select: none;" class="canvas-container">
+		
+		<canvas id="outer-canvas" height="445" width="620" style="border: 1px solid rgb(170, 170, 170); position: absolute; width: 620px; height: 445px; left: 0px; top: 0px; -moz-user-select: none; cursor: crosshair;" class="upper-canvas "></canvas></canvas>
   </div>
+  <video id="video_player" muted="" width="640" height="300" preload="auto" src="http://golovin.de/ba/parking.mp4"  ></video>
+</div>
   
   <!-- import jQuery for AJAX calls (must) -->
 	<script type="text/javascript" src="https://code.jquery.com/jquery-1.11.1.min.js"></script>
+	<script> 
+	var vid = document.getElementById('video_player');
+		function playVid() { 
+			vid.play(); 
+		} 
+
+		function pauseVid() { 
+			vid.pause(); 
+		} 
+		
+		function pauseVideo(event) {
+			vid.pause();
+		}
+		
+	</script> 
 	
   <!-- import Bootstrap for responsive UI (must) -->
   <script type="text/javascript" src="https://netdna.bootstrapcdn.com/bootstrap/3.3.1/js/bootstrap.min.js"></script>
+<script id="main">(function() {
+  var $ = function(id){return document.getElementById(id)};
+	var canvas = this.__canvas = new fabric.Canvas('outer-canvas', {
+    isDrawingMode: true
+  });
+
+  fabric.Object.prototype.transparentCorners = false;
+
+  var drawingModeEl = $('drawing-mode'),
+      drawingOptionsEl = $('drawing-mode-options'),
+      drawingColorEl = $('drawing-color'),
+      drawingShadowColorEl = $('drawing-shadow-color'),
+      drawingLineWidthEl = $('drawing-line-width'),
+      drawingShadowWidth = $('drawing-shadow-width'),
+      drawingShadowOffset = $('drawing-shadow-offset'), 
+      clearEl = $('clear-canvas'),
+	  toJsonEl= $('toJson');
+	
+  clearEl.onclick = function() { canvas.clear() };
+  toJson.onclick = function() {
+	console.log(JSON.stringify(canvas));
+    };
+  var log1 = document.getElementById('log1');
+  var log2 = document.getElementById('log2');
+
+  function log(message) {
+	console.log(message); 
+	//var vid = document.getElementById('video_player');
+	console.log("get video_player");
+	vid.pause(); 	
+	console.log("pause video");
+  }
+
+  function observe(eventName) {
+
+    canvas.on(eventName, function(){ log(eventName) });
+   }
+
+
+  observe('mouse:up');
+  observe('mouse:down');
+  observe('after:render');
+  
+  drawingModeEl.onclick = function() {
+    canvas.isDrawingMode = !canvas.isDrawingMode;
+    if (canvas.isDrawingMode) {
+      drawingModeEl.innerHTML = 'Cancel drawing mode';
+      drawingOptionsEl.style.display = '';
+    }
+    else {
+      drawingModeEl.innerHTML = 'Enter drawing mode';
+      drawingOptionsEl.style.display = 'none';
+    }
+  };
+
+  if (fabric.PatternBrush) {
+    var vLinePatternBrush = new fabric.PatternBrush(canvas);
+    vLinePatternBrush.getPatternSrc = function() {
+
+      var patternCanvas = fabric.document.createElement('canvas');
+      patternCanvas.width = patternCanvas.height = 10;
+      var ctx = patternCanvas.getContext('2d');
+
+      ctx.strokeStyle = this.color;
+      ctx.lineWidth = 5;
+      ctx.beginPath();
+      ctx.moveTo(0, 5);
+      ctx.lineTo(10, 5);
+      ctx.closePath();
+      ctx.stroke();
+
+      return patternCanvas;
+    };
+
+    var hLinePatternBrush = new fabric.PatternBrush(canvas);
+    hLinePatternBrush.getPatternSrc = function() {
+
+      var patternCanvas = fabric.document.createElement('canvas');
+      patternCanvas.width = patternCanvas.height = 10;
+      var ctx = patternCanvas.getContext('2d');
+
+      ctx.strokeStyle = this.color;
+      ctx.lineWidth = 5;
+      ctx.beginPath();
+      ctx.moveTo(5, 0);
+      ctx.lineTo(5, 10);
+      ctx.closePath();
+      ctx.stroke();
+
+      return patternCanvas;
+    };
+
+    var squarePatternBrush = new fabric.PatternBrush(canvas);
+    squarePatternBrush.getPatternSrc = function() {
+
+      var squareWidth = 10, squareDistance = 2;
+
+      var patternCanvas = fabric.document.createElement('canvas');
+      patternCanvas.width = patternCanvas.height = squareWidth + squareDistance;
+      var ctx = patternCanvas.getContext('2d');
+
+      ctx.fillStyle = this.color;
+      ctx.fillRect(0, 0, squareWidth, squareWidth);
+
+      return patternCanvas;
+    };
+
+    var diamondPatternBrush = new fabric.PatternBrush(canvas);
+    diamondPatternBrush.getPatternSrc = function() {
+
+      var squareWidth = 10, squareDistance = 5;
+      var patternCanvas = fabric.document.createElement('canvas');
+      var rect = new fabric.Rect({
+        width: squareWidth,
+        height: squareWidth,
+        angle: 45,
+        fill: this.color
+      });
+
+      var canvasWidth = rect.getBoundingRectWidth();
+
+      patternCanvas.width = patternCanvas.height = canvasWidth + squareDistance;
+      rect.set({ left: canvasWidth / 2, top: canvasWidth / 2 });
+
+      var ctx = patternCanvas.getContext('2d');
+      rect.render(ctx);
+
+      return patternCanvas;
+    };
+
+  }
+
+  drawingColorEl.onchange = function() {
+    canvas.freeDrawingBrush.color = this.value;
+  };
+  drawingShadowColorEl.onchange = function() {
+    canvas.freeDrawingBrush.shadowColor = this.value;
+  };
+  drawingLineWidthEl.onchange = function() {
+    canvas.freeDrawingBrush.width = parseInt(this.value, 10) || 1;
+    this.previousSibling.innerHTML = this.value;
+  };
+  drawingShadowWidth.onchange = function() {
+    canvas.freeDrawingBrush.shadowBlur = parseInt(this.value, 10) || 0;
+    this.previousSibling.innerHTML = this.value;
+  };
+  drawingShadowOffset.onchange = function() {
+    canvas.freeDrawingBrush.shadowOffsetX =
+    canvas.freeDrawingBrush.shadowOffsetY = parseInt(this.value, 10) || 0;
+    this.previousSibling.innerHTML = this.value;
+  };
+
+  if (canvas.freeDrawingBrush) {
+    canvas.freeDrawingBrush.color = drawingColorEl.value;
+    canvas.freeDrawingBrush.width = parseInt(drawingLineWidthEl.value, 10) || 1;
+    canvas.freeDrawingBrush.shadowBlur = 0;
+  }
+})();
+</script>
   
   <!-- import JWS and JSRSASIGN (must) -->
   <script type="text/javascript" src="js/jws-2.0.min.js"></script>
@@ -191,7 +398,7 @@ OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
         }
       );
     }
-	
+    
 	  function getVideo(input) {
       client.getVideo(input,
         function(data,type) {

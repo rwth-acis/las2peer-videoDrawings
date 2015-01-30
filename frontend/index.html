@@ -58,7 +58,10 @@ OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 position: fixed;
     top: 330px;
     right: 105px;
-	}	
+	}
+.btn{ 
+  border:0px solid transparent; /* this was 1px earlier */ 
+ }	
 </style>
 
  <body> 
@@ -99,7 +102,8 @@ position: fixed;
   <div class="container" style="margin-top:60px">
   <div class="jumbotron">
     <h2>Video Drawer service</h2>      
-    <p>This service will grow as we add more and more features...</p>      
+    <p>This service will grow as we add more and more features...</p> 
+	<h2 class="authenticated hidden">Hello, <span id="uname"></span>!</h2>	
   </div>
   <h2>Annotations and Video</h2>
   <div class="btn-group btn-group-lg">
@@ -121,21 +125,11 @@ position: fixed;
 	<div class="panel-body">
 		<ul class="list-group">
 			<div id = "annotation-list">	
-			<li class="list-group-item">
-			Annotation
-				<div style="float:right;">
-					<button type="button" class="btn btn-default">
-						<span class="glyphicon glyphicon-pencil"></span>
-					</button>
-					<button type="button" class="btn btn-default">
-						<span class="glyphicon glyphicon-trash"></span>
-					</button>
-				</div>
-			</li>
+			
 			</div>
 		</ul>
 	</div>				
-	<h2 class="authenticated hidden">Hello, <span id="uname"></span>!</h2>
+	
 	<!--<button onclick="playVid()" class="btn btn-info" type="button">Play Video</button>
 	<button onclick="pauseVid()"  class="btn btn-info" type="button">Pause Video</button>
 	<button id="drawing-mode" class="btn btn-info">Cancel drawing mode</button>
@@ -195,32 +189,25 @@ position: fixed;
 	
 	function sendDrawing(){
 		var source = vid.getAttributeNode("src").value;
-		console.log(JSON.stringify(canvas));
-		console.log(getCurTime());
-		console.log(source);
 		postVideo(JSON.stringify(canvas), getCurTime(), 10, source);
 	}
 	  
 	function getDrawing(){
 		var source = vid.getAttributeNode("src").value;
-		console.log("getting drawings");
 		getVideo(source);
 	 }
   
 	function showDrawing(jsonArray){
 		var i;
 		console.log("showDrawing");
-		console.log(jsonArray.length);
+		console.log(index);
 		var annotationsHtml="";
 		for(i = 0; i < jsonArray.length; i++) {
 			var begin = "<li class='list-group-item'>";
-			var buttons = "<div style='float:right;'><button type='button' class='btn btn-default'>	<span class='glyphicon glyphicon-pencil'></span></button><button type='button' class='btn btn-default'><span class='glyphicon glyphicon-trash'></span></button></div>";
-			var annotation = begin.concat(i," time:",jsonArray[i].time," duration",jsonArray[i].duration, buttons, "</li>"); 
-			console.log(i);
-			console.log(jsonArray[i].duration);
-			console.log(jsonArray[i].time);
-			console.log(jsonArray[i].videoUrl);
-			annotationsHtml.concat(annotation);
+			var button = " <button type='button' onclick='getAnnotation(" + i + ")' class='btn btn-primary'>";
+			var buttons = "<div style='float:right;'><button type='button' onclick='getAnnotation(" + i + ")' class='btn btn-default  btn-sm'>	<span class='glyphicon glyphicon-pencil'></span></button><button type='button' onclick='deleteVideo(" + jsonArray[i].drawingId + ")' class='btn btn-default  btn-sm'><span class='glyphicon glyphicon-trash'></span></button></div>";
+			var annotation = begin.concat(i,button," time:",jsonArray[i].time," duration",jsonArray[i].duration,"</button>", buttons, "</li>"); 
+			annotationsHtml = annotationsHtml.concat(annotation);
 		}
 		document.getElementById("annotation-list").innerHTML = annotationsHtml;
 		id = jsonArray[index].drawingId;
@@ -280,9 +267,6 @@ position: fixed;
 		this.previousSibling.innerHTML = this.value;
 	};
 	
-	var circle = new fabric.Circle({
-  radius: 20, fill: 'black', left: 100, top: 100,
-});
 
 function getPreviousAnnotation()
 {
@@ -305,9 +289,13 @@ function getNextAnnotation()
 	console.log("on Next");
 	}
 }
+function getAnnotation(id)
+{
+	index = id;
+	getDrawing(index);
+}
 
 
-canvas.renderAll();
 
 	//observe('mouse:up');
 	//observe('mouse:down');
@@ -430,7 +418,7 @@ canvas.renderAll();
       );
     }
 	
-	  function getVideo(videoUrl, j) {
+	  function getVideo(videoUrl) {
 	  var values = {"videoUrl":videoUrl};
 	  var input = JSON.stringify(values);
 	  client.getVideo(input,
@@ -439,11 +427,10 @@ canvas.renderAll();
 			var arr = JSON.parse(data);
 			var i;
 			for(i = 0; i < arr.length; i++) {
-				console.log(i);
-				console.log(arr[i].time);
+				console.log(arr[i].drawingId);
 				}
 			console.log("going at show drawing");
-			showDrawing(arr,j);
+			showDrawing(arr);
           //$("#getVideoOutput").html(data);
         },
         function(error) {
@@ -522,7 +509,7 @@ canvas.renderAll();
     }
 	
 	function deleteVideo(input) {
-      client.updateVideo(id,
+      client.deleteVideo(id,
         function(data,type) {
           // this is the success callback
           console.log(data);

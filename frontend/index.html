@@ -58,7 +58,10 @@ OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 position: fixed;
     top: 330px;
     right: 105px;
-	}	
+	}
+.btn{ 
+  border:0px solid transparent; /* this was 1px earlier */ 
+ }	
 </style>
 
  <body> 
@@ -122,17 +125,7 @@ position: fixed;
 	<div class="panel-body">
 		<ul class="list-group">
 			<div id = "annotation-list">	
-			<li class="list-group-item">
-			Annotation
-				<div style="float:right;">
-					<button type="button" class="btn btn-default">
-						<span class="glyphicon glyphicon-pencil"></span>
-					</button>
-					<button type="button" class="btn btn-default">
-						<span class="glyphicon glyphicon-trash"></span>
-					</button>
-				</div>
-			</li>
+			
 			</div>
 		</ul>
 	</div>				
@@ -207,18 +200,16 @@ position: fixed;
 	function showDrawing(jsonArray){
 		var i;
 		console.log("showDrawing");
-		console.log(jsonArray.length);
+		console.log(index);
 		var annotationsHtml="";
 		for(i = 0; i < jsonArray.length; i++) {
 			var begin = "<li class='list-group-item'>";
-			var buttons = "<div style='float:right;'><button type='button' class='btn btn-default'>	<span class='glyphicon glyphicon-pencil'></span></button><button type='button' class='btn btn-default'><span class='glyphicon glyphicon-trash'></span></button></div>";
-			var annotation = begin.concat(i," time:",jsonArray[i].time," duration",jsonArray[i].duration, buttons, "</li>"); 
-			console.log(annotation);
+			var button = " <button type='button' onclick='getAnnotation(" + i + ")' class='btn btn-primary'>";
+			var buttons = "<div style='float:right;'><button type='button' onclick='getAnnotation(" + i + ")' class='btn btn-default  btn-sm'>	<span class='glyphicon glyphicon-pencil'></span></button><button type='button' onclick='deleteVideo(" + jsonArray[i].drawingId + ")' class='btn btn-default  btn-sm'><span class='glyphicon glyphicon-trash'></span></button></div>";
+			var annotation = begin.concat(i,button," time:",jsonArray[i].time," duration",jsonArray[i].duration,"</button>", buttons, "</li>"); 
 			annotationsHtml = annotationsHtml.concat(annotation);
-			console.log(annotationsHtml);
 		}
 		document.getElementById("annotation-list").innerHTML = annotationsHtml;
-		console.log(annotationsHtml);
 		id = jsonArray[index].drawingId;
 		vid.currentTime = jsonArray[index].time;
 		console.log(jsonArray[index].time);
@@ -276,9 +267,6 @@ position: fixed;
 		this.previousSibling.innerHTML = this.value;
 	};
 	
-	var circle = new fabric.Circle({
-  radius: 20, fill: 'black', left: 100, top: 100,
-});
 
 function getPreviousAnnotation()
 {
@@ -301,9 +289,13 @@ function getNextAnnotation()
 	console.log("on Next");
 	}
 }
+function getAnnotation(id)
+{
+	index = id;
+	getDrawing(index);
+}
 
 
-canvas.renderAll();
 
 	//observe('mouse:up');
 	//observe('mouse:down');
@@ -426,7 +418,7 @@ canvas.renderAll();
       );
     }
 	
-	  function getVideo(videoUrl, j) {
+	  function getVideo(videoUrl) {
 	  var values = {"videoUrl":videoUrl};
 	  var input = JSON.stringify(values);
 	  client.getVideo(input,
@@ -435,11 +427,10 @@ canvas.renderAll();
 			var arr = JSON.parse(data);
 			var i;
 			for(i = 0; i < arr.length; i++) {
-				console.log(i);
-				console.log(arr[i].time);
+				console.log(arr[i].drawingId);
 				}
 			console.log("going at show drawing");
-			showDrawing(arr,j);
+			showDrawing(arr);
           //$("#getVideoOutput").html(data);
         },
         function(error) {

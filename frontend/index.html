@@ -64,7 +64,7 @@ position: fixed;
  }	
 </style>
 
- <body> 
+ <body onload = "startObserve()"> 
   <!-- Fixed navbar -->
   <div class="navbar navbar-default navbar-fixed-top" role="navigation">
     <div class="container">
@@ -114,7 +114,7 @@ position: fixed;
   </div>
   <h2>Annotations</h2>
   <div class="btn-group btn-group-lg">
-    <button type="button" id="drawing-mode" class="btn btn-primary">Cancel drawing mode</button>
+    <button type="button" id="drawing-mode" class="btn btn-primary">Drawing</button>
     <button type="button" onclick="sendDrawing()" id="sendDrawing" class="btn btn-primary">Save <span class=" glyphicon glyphicon-save" aria-hidden="true"/></button>
 	<button type="button" onclick = "deleteVideo(id)" id="drawing-mode" class="btn btn-primary">Delete <span class=" glyphicon glyphicon-remove" aria-hidden="true"/> </button>
     <button type="button" id="clear-canvas" class="btn btn-primary">Clear Canvas</button>
@@ -158,19 +158,23 @@ position: fixed;
 		sendDrawingEl = $('sendDrawing'),
 		getDrawingEl = $('getDrawing');
 
+	// play the video
 	function playVid() { 
 		vid.play();
 		
 	} 
 
+	// pause the video
 	function pauseVid() { 
 		vid.pause(); 
 	}
 	
+	// get the current time of the video
 	function getCurTime() { 
 		return vid.currentTime;
 	}
 	
+	// set the video at a specific time
 	function setCurTime(time) {
 		vid.currentTime = time;
 	}
@@ -187,16 +191,19 @@ position: fixed;
 		console.log(index);
 	};
 	
+	// send a request to save a video annotation
 	function sendDrawing(){
 		var source = vid.getAttributeNode("src").value;
 		postVideo(JSON.stringify(canvas), getCurTime(), 10, source);
 	}
-	  
+	 
+	// get the annotations
 	function getDrawing(){
 		var source = vid.getAttributeNode("src").value;
 		getVideo(source);
 	 }
-  
+	
+	// show a drawing from the list
 	function showDrawing(jsonArray){
 		var i;
 		console.log("showDrawing");
@@ -217,7 +224,8 @@ position: fixed;
 		fabric.log(o, object);
 		});
 	}
- 
+	
+	//
 	function log(message) {
 		console.log("pause video");
 		if (message === 'mouse:down') {
@@ -229,11 +237,17 @@ position: fixed;
 		}
 	}
 
+	//
 	function observe(eventName) {
 		log(eventName);
-		//canvas.on(eventName, function(){ log(eventName) });
+		canvas.on(eventName, function(){ log(eventName) });
 	}
 	
+	function startObserve()
+	{
+	  observe('mouse:down');
+	  getDrawing();
+  	}	
 	drawingModeEl.onclick = function() {
 		canvas.isDrawingMode = !canvas.isDrawingMode;
 		if (canvas.isDrawingMode) {
@@ -267,18 +281,18 @@ position: fixed;
 		this.previousSibling.innerHTML = this.value;
 	};
 	
-
+// get the previous annotation
 function getPreviousAnnotation()
 {
 	if (index <= 0)
 		alert ("There is no previous annotation");
 	else {
-	index = index -1;
+	index = index - 1;
 	getDrawing(index);
-	console.log("on Previous");
 	}
 }
 
+// get the next annotation
 function getNextAnnotation()
 {
 	if (index < 0)
@@ -286,15 +300,85 @@ function getNextAnnotation()
 	else {
 	index = index + 1;
 	getDrawing(index);
-	console.log("on Next");
 	}
 }
+
+// get an annotation
 function getAnnotation(id)
 {
 	index = id;
 	getDrawing(index);
 }
 
+	 canvas.on({
+    'object:selected': onObjectSelected,
+    'object:moving': onObjectMoving,
+    'before:selection:cleared': onBeforeSelectionCleared,
+	'mouse:up':observe('mouse:up'),
+	'mouse:down':observe('mouse:down'),
+	'mouse:move':observe('mouse:move')
+	});
+	
+	function onObjectSelected(e) {
+    var activeObject = e.target;
+
+    if (activeObject.name == "p0" || activeObject.name == "p2") {
+      activeObject.line2.animate('opacity', '1', {
+        duration: 200,
+        onChange: canvas.renderAll.bind(canvas),
+      });
+      activeObject.line2.selectable = true;
+    }
+  }
+
+  function onBeforeSelectionCleared(e) {
+    var activeObject = e.target;
+    if (activeObject.name == "p0" || activeObject.name == "p2") {
+      activeObject.line2.animate('opacity', '0', {
+        duration: 200,
+        onChange: canvas.renderAll.bind(canvas),
+      });
+      activeObject.line2.selectable = false;
+    }
+    else if (activeObject.name == "p1") {
+      activeObject.animate('opacity', '0', {
+        duration: 200,
+        onChange: canvas.renderAll.bind(canvas),
+      });
+      activeObject.selectable = false;
+    }
+  }
+
+  function onObjectMoving(e) {
+    if (e.target.name == "p0" || e.target.name == "p2") {
+      var p = e.target;
+
+      if (p.line1) {
+        p.line1.path[0][1] = p.left;
+        p.line1.path[0][2] = p.top;
+      }
+      else if (p.line3) {
+        p.line3.path[1][3] = p.left;
+        p.line3.path[1][4] = p.top;
+      }
+    }
+    else if (e.target.name == "p1") {
+      var p = e.target;
+
+      if (p.line2) {
+        p.line2.path[1][1] = p.left;
+        p.line2.path[1][2] = p.top;
+      }
+    }
+    else if (e.target.name == "p0" || e.target.name == "p2") {
+      var p = e.target;
+
+      p.line1 && p.line1.set({ 'x2': p.left, 'y2': p.top });
+      p.line2 && p.line2.set({ 'x1': p.left, 'y1': p.top });
+      p.line3 && p.line3.set({ 'x1': p.left, 'y1': p.top });
+      p.line4 && p.line4.set({ 'x1': p.left, 'y1': p.top });
+    }
+  }
 
 
 	//observe('mouse:up');
@@ -385,39 +469,8 @@ function getAnnotation(id)
     
     // create new instance of TemplateServiceClient, given its endpoint URL
     var client = new TemplateServiceClient("http://localhost:8080/");
-    
-    // function defined as response to a click on the first button (see below)
-    function getExample() {
-      client.getMethod(
-        function(data,type) {
-          // this is the success callback
-          console.log(data);
-          $("#getExampleOutput").html(data);
-        },
-        function(error) {
-          // this is the error callback
-          console.log(error);
-          $("#getExampleOutput").html(error);
-        }
-      );
-    }
 	
-	 // function defined as response to a click on the third button (see below)
-    function getTest() {
-      client.getTests(
-        function(data,type) {
-          // this is the success callback
-          console.log(data);
-          $("#getTestOutput").html(data);
-        },
-        function(error) {
-          // this is the error callback
-          console.log(error);
-          $("#getTestOutput").html(error);
-        }
-      );
-    }
-	
+	// function to get video drawings by the videoUrl
 	  function getVideo(videoUrl) {
 	  var values = {"videoUrl":videoUrl};
 	  var input = JSON.stringify(values);
@@ -429,7 +482,6 @@ function getAnnotation(id)
 			for(i = 0; i < arr.length; i++) {
 				console.log(arr[i].drawingId);
 				}
-			console.log("going at show drawing");
 			showDrawing(arr);
           //$("#getVideoOutput").html(data);
         },
@@ -443,6 +495,7 @@ function getAnnotation(id)
 	  
     }
 	
+	//function to get all video drawings, for all videos
 	function getVideos() {
       client.getVideos(
         function(data,type) {
@@ -474,6 +527,7 @@ function getAnnotation(id)
       );
     }
 	
+	//function for posting an annotation
 	function postVideo(json,time,duration,videoUrl) {
 	var values = {"drawing":json, "time":time, "duration":duration, "videoUrl":videoUrl};
 	var input = JSON.stringify(values);
@@ -482,6 +536,7 @@ function getAnnotation(id)
           // this is the success callback
           console.log(data);
           $("#postVideoOutput").html(data);
+		  getDrawing();
         },
         function(error) {
           // this is the error callback
@@ -491,6 +546,7 @@ function getAnnotation(id)
       );
     }
 	
+	// function for updating an annotation
 	function updateVideo(id,json,time,duration,videoUrl) {
 	var values = {"drawingId":id,"drawing":json, "time":time, "duration":duration, "videoUrl":videoUrl};
 	var input = JSON.stringify(values);
@@ -508,12 +564,14 @@ function getAnnotation(id)
       );
     }
 	
+	// function for deleting an annotation
 	function deleteVideo(input) {
       client.deleteVideo(id,
         function(data,type) {
           // this is the success callback
           console.log(data);
           $("#deleteVideoOutput").html(data);
+		  getDrawing();
         },
         function(error) {
           // this is the error callback
